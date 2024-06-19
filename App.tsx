@@ -19,6 +19,8 @@ import WorkdayList from './app/screens/AdminScreens/WorkdayList';
 import BaristaDetails from './app/screens/AdminScreens/BaristaDetails';
 import BaristaSales from './app/screens/AdminScreens/BaristaSales';
 import AdminPrices from './app/screens/AdminScreens/AdminPrices';
+import tables from './app/screens/BaristaScreens/tables';
+import tablesales from './app/screens/BaristaScreens/tablesales';
 
 type RootStackParamList = {
   WorkdayList: undefined;
@@ -49,7 +51,8 @@ function InsideLayout({ firestoreUser }: { firestoreUser: any }) {
       ) : (
         <>
           <insideStack.Screen name="Todos" component={List} options={{ headerShown: false }}/>
-          <insideStack.Screen name="Details" component={Details} options={{ headerShown: false }}/>
+          <insideStack.Screen name="tables" component={tables} options={{ headerShown: false }}/>
+          <insideStack.Screen name="tablesales" component={tablesales} options={{ headerShown: false }}/>
         </>
       )}
     </insideStack.Navigator>

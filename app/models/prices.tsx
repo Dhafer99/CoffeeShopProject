@@ -1,5 +1,5 @@
-export interface BaristaSales {
-    cappucin: number;
+export interface Prices {
+    capuccin: number;
     express: number;
     direct: number;
     water_0_5L: number;
@@ -9,6 +9,4 @@ export interface BaristaSales {
     citron: number;
     jusOrange: number;
     cake: number;
-    effective_from: string;
-    effective_to: string | null;
   }

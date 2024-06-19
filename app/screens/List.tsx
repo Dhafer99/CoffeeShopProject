@@ -28,8 +28,8 @@ const List = ({ navigation }: RouterProps) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>List</Text>
-      <TouchableOpacity style={styles.blackButton} onPress={() => navigation.navigate('details')}>
-        <Text style={styles.blackButtonText}>Details</Text>
+      <TouchableOpacity style={styles.blackButton} onPress={() => navigation.navigate('tables')}>
+        <Text style={styles.blackButtonText}>tables</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.whiteButton} onPress={handleSignOut}>
         <Text style={styles.whiteButtonText}>Logout</Text>

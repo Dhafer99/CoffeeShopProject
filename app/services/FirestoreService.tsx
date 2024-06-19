@@ -1,8 +1,9 @@
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc, setDoc, getDoc, limit, QueryDocumentSnapshot, DocumentReference } from 'firebase/firestore';
 import { FIRESTORE_DB } from '../../FirebaseConfig';
-import { BaristaSales } from '../models/baristasales';
+import { Prices } from '../models/prices';
 
 import { User } from '../models/user';
+
 
 
 export const fetchUserDataByUid = async (uid:any) => {
@@ -62,6 +63,8 @@ export const deleteUser = async (id: string): Promise<void> => {
 
 
 const baristasCollection = collection(FIRESTORE_DB, 'Users');
+const priceHistoryCollection = collection(FIRESTORE_DB, 'priceHistory');
+
 
 export const getWorkdays = async (): Promise<string[]> => {
   try {
@@ -79,6 +82,32 @@ export const getWorkdays = async (): Promise<string[]> => {
     return [];
   }
 };
+
+export const getPriceForWorkday = async (workday: string): Promise<BaristaSales | null> => {
+  try {
+    const workdayDate = new Date(workday.split('/').reverse().join('-')); // Convert DD/MM/YYYY to Date
+    const pricesQuery = query(
+      priceHistoryCollection,
+      where('effective_from', '<=', workdayDate),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(pricesQuery);
+    if (!querySnapshot.empty) {
+      const priceDoc = querySnapshot.docs[0];
+      const priceData = priceDoc.data();
+      return {
+        ...priceData,
+        effective_from: priceData.effective_from,
+        effective_to: priceData.effective_to
+      } as BaristaSales;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting price for workday:', error);
+    return null;
+  }
+};
+
 
 export const getBaristasByWorkday = async (workday: string): Promise<User[]> => {
   try {
@@ -129,17 +158,67 @@ export const getBaristaSalesByEmail = async (email: string): Promise<BaristaSale
     return null;
   }
 };
+// Define the BaristaSales interface
+export interface BaristaSales {
+  cappucin: number;
+  express: number;
+  direct: number;
+  water_0_5L: number;
+  water_1L: number;
+  TheFusion: number;
+  Soda: number;
+  citron: number;
+  jusOrange: number;
+  cake: number;
+  effective_from: string;
+  effective_to: string | null;
+}
+
+// Define an interface for BaristaSales with ID
+interface BaristaSalesWithId extends BaristaSales {
+  id: string;
+}
+
+// Helper function to format the date as DD/MM/YYYY
+const formatDate = (date: Date): string => {
+  const day = (`0${date.getDate()}`).slice(-2);
+  const month = (`0${date.getMonth() + 1}`).slice(-2);
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+export const getPricesForWorkday = async (workday: string): Promise<Partial<Prices> | null> => {
+  try {
+    const pricesRef = collection(FIRESTORE_DB, 'priceshistory');
+    const q = query(pricesRef, where('effective_from', '<=', workday), where('effective_to', '>=', workday));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return doc.data() as Prices;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching prices for workday:", error);
+    return null;
+  }
+};
 
 // Get current prices
-export const getPrices = async () => {
+export const getPrices = async (): Promise<BaristaSalesWithId | null> => {
   try {
-    const pricesDoc = doc(FIRESTORE_DB, 'prices', 'currentPrices');
-    const docSnap = await getDoc(pricesDoc);
+    const pricesQuery = query(
+      collection(FIRESTORE_DB, 'priceHistory'),
+      where('effective_to', '==', null),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(pricesQuery);
 
-    if (docSnap.exists()) {
-      return docSnap.data();
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0] as QueryDocumentSnapshot<BaristaSales>;
+      return { id: docSnap.id, ...docSnap.data() };
     } else {
-      console.error('No prices found');
+      console.error('No current prices found');
       return null;
     }
   } catch (error) {
@@ -149,10 +228,35 @@ export const getPrices = async () => {
 };
 
 // Update current prices
-export const updatePrices = async (prices: any) => {
+export const updatePrices = async (newPrices: Omit<BaristaSales, 'effective_from' | 'effective_to'>): Promise<void> => {
   try {
-    const pricesDoc = doc(FIRESTORE_DB, 'prices', 'currentPrices');
-    await setDoc(pricesDoc, prices);
+    const now = new Date();
+    const formattedDate = formatDate(now);
+
+    // Fetch the current prices document
+    const pricesQuery = query(
+      collection(FIRESTORE_DB, 'priceHistory'),
+      where('effective_to', '==', null),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(pricesQuery);
+
+    if (!querySnapshot.empty) {
+      const currentPriceDoc = querySnapshot.docs[0];
+      const currentPriceDocRef: DocumentReference<BaristaSales> = currentPriceDoc.ref as DocumentReference<BaristaSales>;
+
+      // Update the effective_to field of the current prices document
+      await updateDoc(currentPriceDocRef, {
+        effective_to: formattedDate
+      });
+    }
+
+    // Add new prices document
+    await addDoc(collection(FIRESTORE_DB, 'priceHistory'), {
+      ...newPrices,
+      effective_from: formattedDate,
+      effective_to: null
+    } as BaristaSales);
   } catch (error) {
     console.error('Error updating prices:', error);
   }

@@ -11,7 +11,10 @@ export type RootStackParamList = {
     WorkdayList: undefined;
     BaristaDetails: { workday: string };
     BaristaSales: { email: string };
+ 
     Todos: undefined;
     Details: undefined;
+    tables:undefined ;
+    tablesales:{ tablenumber: number };
   };
   

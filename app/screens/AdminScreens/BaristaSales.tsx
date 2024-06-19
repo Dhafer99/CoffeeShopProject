@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types'; // Adjust the import path as needed
-import { getBaristaSalesByEmail } from '../../services/FirestoreService'; // Adjust the import path as needed
-import { BaristaSales as BaristaSalesType } from '../../models/baristasales'; // Adjust the import path as needed
+import { RootStackParamList } from '../navigation/types';
+import { getBaristaSalesByEmail, getPrices } from '../../services/FirestoreService';
+import { BaristaSales as BaristaSalesType } from '../../models/baristasales';
 
 type BaristaSalesRouteProp = RouteProp<RootStackParamList, 'BaristaSales'>;
 type BaristaSalesNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BaristaSales'>;
+
+interface Prices {
+    capuccin: number;
+    express: number;
+    direct: number;
+    water_0_5L: number;
+    water_1L: number;
+    TheFusion: number;
+    Soda: number;
+    citron: number;
+    jusOrange: number;
+    cake: number;
+    }
 
 const BaristaSales = () => {
   const route = useRoute<BaristaSalesRouteProp>();
@@ -15,9 +28,12 @@ const BaristaSales = () => {
 
   const [sales, setSales] = useState<BaristaSalesType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [prices, setPrices] = useState<Partial<Prices>>({});
+  const [totalSales, setTotalSales] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSales();
+    fetchPrices();
   }, []);
 
   const fetchSales = async () => {
@@ -29,35 +45,33 @@ const BaristaSales = () => {
     setLoading(false);
   };
 
+  const fetchPrices = async () => {
+    const fetchedPrices = await getPrices();
+    if (fetchedPrices) {
+      setPrices(fetchedPrices);
+    }
+  };
+
+  useEffect(() => {
+    if (sales && prices) {
+      calculateTotalSales(sales);
+    }
+  }, [sales, prices]);
+
   const calculateTotalSales = (sales: BaristaSalesType) => {
-    const prices = {
-      cappucin: 1.5,
-      express: 1.5,
-      direct: 2,
-      water_0_5L: 1,
-      water_1L: 1.5,
-      TheFusion: 1.5,
-      Soda: 2.5,
-      citron: 2.5,
-      jusOrange: 3,
-      cake: 1,
-    };
-
     let total = 0;
-
     for (const key in sales) {
-      if (key !== 'email' && prices[key as keyof typeof prices] !== undefined) {
-        total += (sales[key as keyof BaristaSalesType] as number) * prices[key as keyof typeof prices];
+      if (prices[key as keyof Prices] !== undefined) {
+        total += (sales[key as keyof BaristaSalesType] as number) * (prices[key as keyof Prices] as number);
       }
     }
-
-    return total;
+    setTotalSales(total);
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Loading sales data...</Text>
+        <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
   }
@@ -70,8 +84,6 @@ const BaristaSales = () => {
     );
   }
 
-  const totalSales = calculateTotalSales(sales);
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Sales Data</Text>
@@ -82,10 +94,12 @@ const BaristaSales = () => {
             <Text style={styles.value}>{sales[key as keyof BaristaSalesType]}</Text>
           </View>
         ))}
-        <View style={styles.salesItem}>
-          <Text style={styles.label}>Total Sales:</Text>
-          <Text style={styles.value}>{totalSales.toFixed(2)} DT</Text>
-        </View>
+        {totalSales !== null && (
+          <View style={styles.salesItem}>
+            <Text style={styles.label}>Total Sales:</Text>
+            <Text style={styles.value}>{totalSales} DT</Text>
+          </View>
+        )}
       </View>
     </View>
   );

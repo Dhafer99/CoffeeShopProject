@@ -20,7 +20,7 @@ const addBaristas = () => {
   
     const handleAddUser = async () => {
       if (Name && email) {
-        await addUser({ Name, email });
+        await addUser({ Name, email ,  workdays: []});
         setName('');
         setEmail('');
         fetchUsers();

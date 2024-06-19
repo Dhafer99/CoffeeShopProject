@@ -1,34 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { getPrices, updatePrices } from '../../services/FirestoreService';
 
 interface Prices {
-  cappucin: string;
-  express: string;
-  direct: string;
-  water_0_5L: string;
-  water_1L: string;
-  TheFusion: string;
-  Soda: string;
-  citron: string;
-  jusOrange: string;
-  cake: string;
+  cappucin: number;
+  express: number;
+  direct: number;
+  water_0_5L: number;
+  water_1L: number;
+  TheFusion: number;
+  Soda: number;
+  citron: number;
+  jusOrange: number;
+  cake: number;
 }
 
 const AdminPrices = () => {
   const [prices, setPrices] = useState<Prices>({
-    cappucin: '',
-    express: '',
-    direct: '',
-    water_0_5L: '',
-    water_1L: '',
-    TheFusion: '',
-    Soda: '',
-    citron: '',
-    jusOrange: '',
-    cake: '',
+    cappucin: 0,
+    express: 0,
+    direct: 0,
+    water_0_5L: 0,
+    water_1L: 0,
+    TheFusion: 0,
+    Soda: 0,
+    citron: 0,
+    jusOrange: 0,
+    cake: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [loadingUpdate, setLoadingUpdate] = useState(false);
 
   useEffect(() => {
     fetchPrices();
@@ -39,16 +40,16 @@ const AdminPrices = () => {
       const fetchedPrices = await getPrices();
       if (fetchedPrices) {
         setPrices({
-          cappucin: fetchedPrices.cappucin || '',
-          express: fetchedPrices.express || '',
-          direct: fetchedPrices.direct || '',
-          water_0_5L: fetchedPrices.water_0_5L || '',
-          water_1L: fetchedPrices.water_1L || '',
-          TheFusion: fetchedPrices.TheFusion || '',
-          Soda: fetchedPrices.Soda || '',
-          citron: fetchedPrices.citron || '',
-          jusOrange: fetchedPrices.jusOrange || '',
-          cake: fetchedPrices.cake || '',
+          cappucin: fetchedPrices.cappucin,
+          express: fetchedPrices.express,
+          direct: fetchedPrices.direct,
+          water_0_5L: fetchedPrices.water_0_5L,
+          water_1L: fetchedPrices.water_1L,
+          TheFusion: fetchedPrices.TheFusion,
+          Soda: fetchedPrices.Soda,
+          citron: fetchedPrices.citron,
+          jusOrange: fetchedPrices.jusOrange,
+          cake: fetchedPrices.cake,
         });
       } else {
         Alert.alert('Error', 'Failed to fetch prices');
@@ -62,22 +63,26 @@ const AdminPrices = () => {
   };
 
   const handleChange = (name: keyof Prices, value: string) => {
-    setPrices({ ...prices, [name]: value });
+    setPrices({ ...prices, [name]: Number(value) });
   };
 
   const handleSubmit = async () => {
+    setLoadingUpdate(true);
     try {
       await updatePrices(prices);
       Alert.alert('Success', 'Prices updated successfully');
     } catch (error) {
       console.error('Error updating prices: ', error);
       Alert.alert('Error', 'Failed to update prices');
+    } finally {
+      setLoadingUpdate(false);
     }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
         <Text>Loading...</Text>
       </View>
     );
@@ -92,13 +97,17 @@ const AdminPrices = () => {
             <Text style={styles.label}>{key.replace('_', ' ')}:</Text>
             <TextInput
               style={styles.input}
-              value={prices[key as keyof Prices]}
+              value={prices[key as keyof Prices].toString()}
               onChangeText={(value) => handleChange(key as keyof Prices, value)}
               keyboardType="numeric"
             />
           </View>
         ))}
-        <Button title="Update Prices" onPress={handleSubmit} />
+        {loadingUpdate ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : (
+          <Button title="Update Prices" onPress={handleSubmit} />
+        )}
       </View>
     </ScrollView>
   );
