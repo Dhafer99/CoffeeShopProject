@@ -144,3 +144,18 @@ export const deleteTableAndRelatedCoffeeTable = async (db: Firestore, id: string
       return null;
     }
   };
+
+  export const getCurrentPrices = async () => {
+    try {
+        const pricesDoc = await getDoc(doc(FIRESTORE_DB, 'prices', 'currentPrices'));
+        if (pricesDoc.exists()) {
+            return pricesDoc.data();
+        } else {
+            console.log('No such document!');
+            return {};
+        }
+    } catch (error) {
+        console.error('Error fetching prices:', error);
+        return {};
+    }
+};

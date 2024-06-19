@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, ListRenderItem } from 'react-native';
 import { FIRESTORE_DB } from '../../../FirebaseConfig';
 import { TableSales } from "../../models/tables";
-import { addOrUpdateTableInFirestore, subscribeToTableChanges, deleteTableFromFirestore, getTableSalesByNumber } from '../../services/FireStoreBaristaService'; // Adjust import path as necessary
+import { addOrUpdateTableInFirestore, subscribeToTableChanges, deleteTableFromFirestore, getTableSalesByNumber, getCurrentPrices } from '../../services/FireStoreBaristaService'; // Adjust import path as necessary
 import { RootStackParamList } from '../navigation/types';
 
 interface CoffeeType {
@@ -19,21 +19,35 @@ const coffeeTypes: CoffeeType[] = [
   { type: 'Water 1L', count: 0 }
 ];
 
+
 const CoffeeSales: React.FC = () => {
     const route = useRoute<BaristaDetailsRouteProp>();
     const { tablenumber } = route.params;
     const [sales, setSales] = useState<CoffeeType[]>(coffeeTypes);
-    const [confirmedsales, setConfirmedSales] = useState<CoffeeType[]>(coffeeTypes); 
-    const [confirmed, setConfirmed] = useState<boolean>(false);
     const [previousSales, setPreviousSales] = useState<CoffeeType[]>(coffeeTypes);
+    const [confirmed, setConfirmed] = useState<boolean>(false);
     const [tables, setTables] = useState<TableSales[]>([]);
-    const tableNumber = tablenumber; 
+    const [prices, setPrices] = useState<{ [key: string]: number }>({});
 
-    useEffect(() => {
-        const fetchSales = async () => {
+    const tableNumber = tablenumber;
+
+      useEffect(() => {
+        const fetchSalesAndPrices = async () => {
             try {
                 console.log("Fetching sales for table number:", tableNumber);
-                const tableData = await getTableSalesByNumber(tableNumber);
+                const [tableData, currentPrices] = await Promise.all([
+                    getTableSalesByNumber(tableNumber),
+                    getCurrentPrices()
+                ]);
+                if (currentPrices) {
+                     // Convert price strings to numbers
+                     const pricesWithNumbers: { [key: string]: number } = {};
+                     for (const [key, value] of Object.entries(currentPrices)) {
+                         pricesWithNumbers[key.toLowerCase()] = parseFloat(value as string);
+                     }
+                     console.log("CURRENT PRICES ",pricesWithNumbers)
+                     setPrices(pricesWithNumbers);
+                }
                 if (tableData && Array.isArray(tableData.sales) && tableData.sales.length === 0) {
                     setSales(coffeeTypes);
                 } else if (tableData && tableData.sales) {
@@ -49,9 +63,8 @@ const CoffeeSales: React.FC = () => {
             }
         };
 
-        fetchSales();
+        fetchSalesAndPrices();
     }, [tableNumber]);
-
     // Subscribe to table changes
     useEffect(() => {
         const unsubscribe = subscribeToTableChanges(FIRESTORE_DB, (tablesData) => {
@@ -119,11 +132,12 @@ const CoffeeSales: React.FC = () => {
     const renderItem: ListRenderItem<CoffeeType> = ({ item }) => (
         <View style={styles.tableItem}>
             <Text style={[styles.tableNumber, styles.Gloriana]}>{item.type}</Text>
-         
+            <Text style={[styles.tableNumber]}>
+    Price: {prices[item.type.toLowerCase()]?.toFixed(2) || 'N/A'} TND
+</Text>
             <View style={styles.counter}>
                 {!confirmed ? (
                     <>
-                 
                         <TouchableOpacity onPress={() => handleRemove(item.type)} style={styles.button}>
                             <Text style={styles.buttonText}>-</Text>
                         </TouchableOpacity>
@@ -138,44 +152,35 @@ const CoffeeSales: React.FC = () => {
             </View>
         </View>
     );
-
+    const calculateTotalPrice = () => {
+        let totalPrice = 0;
+        sales.forEach(item => {
+            const price = parseFloat(String(prices[item.type.toLowerCase()]) || '0');
+            console.log(`Price for ${item.type}: ${price}`);
+            console.log(`Count for ${item.type}: ${item.count}`);
+            totalPrice += price * item.count;
+        });
+        console.log(`Total price: ${totalPrice}`);
+        return totalPrice;
+    };
     return (
         <View style={styles.container}>
             <Text style={[styles.title, styles.Gloriana]}>Coffee Sales</Text>
             <Text style={[styles.title, styles.Gloriana]}>Table Number {tableNumber}</Text>
-           
             <FlatList
-                data={
-
-                   sales
-                }
+                data={sales}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.type}
                 contentContainerStyle={styles.tableList}
             />
-           
-              
-              
-
-
-
-
-
-
-
-
-
-
-
-
-            
+            <Text style={[styles.Gloriana, styles.Gloriana]}>Total Price: ${calculateTotalPrice().toFixed(2)}</Text>
             <TouchableOpacity onPress={handleConfirm} style={styles.confirmButton} >
                 <Text style={styles.confirmButtonText}>{confirmed ? "Confirmed" : "Confirm Sales"}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-          {/*   {tables.map((table) => (
+            {/* {tables.map((table) => (
                 <View key={table.id} style={styles.tableList}>
                     <Text style={styles.tableNumber}>Table {table.tableNumber}</Text>
                     <Text style={styles.tableStatus}>Status: {table.status}</Text>
