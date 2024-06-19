@@ -25,6 +25,7 @@ const CoffeeSales: React.FC = () => {
     const [sales, setSales] = useState<CoffeeType[]>(coffeeTypes);
     const [confirmedsales, setConfirmedSales] = useState<CoffeeType[]>(coffeeTypes); 
     const [confirmed, setConfirmed] = useState<boolean>(false);
+    const [previousSales, setPreviousSales] = useState<CoffeeType[]>(coffeeTypes);
     const [tables, setTables] = useState<TableSales[]>([]);
     const tableNumber = tablenumber; 
 
@@ -69,12 +70,20 @@ const CoffeeSales: React.FC = () => {
     }, [tableNumber]);
 
     const handleAdd = (type: string) => {
+        setPreviousSales(sales);
         setSales(sales.map(item => item.type === type ? { ...item, count: item.count + 1 } : item));
     };
 
     const handleRemove = (type: string) => {
+        setPreviousSales(sales);
         setSales(sales.map(item => item.type === type && item.count > 0 ? { ...item, count: item.count - 1 } : item));
     };
+
+    const handleCancel = () => {
+        setSales(coffeeTypes);
+        setConfirmed(false);
+    };
+
 
     const handleConfirm = async () => {
         try {
@@ -160,8 +169,11 @@ const CoffeeSales: React.FC = () => {
 
 
             
-            <TouchableOpacity onPress={handleConfirm} style={styles.confirmButton} disabled={confirmed}>
+            <TouchableOpacity onPress={handleConfirm} style={styles.confirmButton} >
                 <Text style={styles.confirmButtonText}>{confirmed ? "Confirmed" : "Confirm Sales"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCancel} style={styles.cancelButton} >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           {/*   {tables.map((table) => (
                 <View key={table.id} style={styles.tableList}>
@@ -200,6 +212,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 10,
+    },
+     cancelButton: {
+        width: '100%',
+        height: 50,
+        backgroundColor: '#FF3B30',
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 20,
+    },
+    cancelButtonText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
     tableNumber: {
         fontSize: 18,
